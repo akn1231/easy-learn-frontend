@@ -16,4 +16,6 @@ export const sentenceService = {
   update: (id, payload) => axiosInstance.put(`/sentences/${id}`, payload),
   delete: (id) => axiosInstance.delete(`/sentences/${id}`),
   approve: (id) => axiosInstance.patch(`/sentences/${id}/approve`),
+  bulkDelete: (ids) => axiosInstance.delete('/sentences', { data: { ids } }),
+  bulkImport: (sentences) => axiosInstance.post('/sentences/import', { sentences }),
 }

@@ -83,6 +83,36 @@ export const useDeleteSentence = () => {
   })
 }
 
+// ─── Bulk import (admin only) ─────────────────────────────────────────────────
+export const useImportSentences = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sentenceService.bulkImport,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SENTENCES] })
+      toast.success(data?.message || 'Import complete.')
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Import failed')
+    },
+  })
+}
+
+// ─── Bulk delete (admin only) ─────────────────────────────────────────────────
+export const useBulkDeleteSentences = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: sentenceService.bulkDelete,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.SENTENCES] })
+      toast.success(data?.message || 'Records deleted.')
+    },
+    onError: (err) => {
+      toast.error(err.message || 'Failed to delete records')
+    },
+  })
+}
+
 // ─── Approve toggle (admin only) ───────────────────────────────────────────────
 export const useApproveSentence = () => {
   const queryClient = useQueryClient()

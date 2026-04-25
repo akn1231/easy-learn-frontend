@@ -16,7 +16,8 @@ axiosInstance.interceptors.request.use((config) => {
 axiosInstance.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthEndpoint = error.config?.url?.includes('/auth/')
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem(AUTH_TOKEN_KEY)
       localStorage.removeItem('easylearn-auth')
       window.location.href = '/login'

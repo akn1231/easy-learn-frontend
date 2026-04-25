@@ -9,6 +9,7 @@ import FilterPanel from '@/components/sentences/FilterPanel'
 import DisplayModeToggle from '@/components/sentences/DisplayModeToggle'
 import SentenceListItem from '@/components/sentences/SentenceListItem'
 import SentenceForm from '@/components/sentences/SentenceForm'
+import ImportDialog from '@/components/sentences/ImportDialog'
 import ConfirmDialog from '@/components/ui/ConfirmDialog'
 import EmptyState from '@/components/ui/EmptyState'
 import ErrorState from '@/components/ui/ErrorState'
@@ -20,6 +21,7 @@ import {
   useUpdateSentence,
   useDeleteSentence,
   useApproveSentence,
+  useBulkDeleteSentences,
 } from '@/hooks/useSentences'
 import useAuthStore from '@/store/authStore'
 import { DISPLAY_MODES } from '@/constants'
@@ -47,6 +49,8 @@ const SentencesPage = () => {
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState(null)
   const [deleteTarget, setDeleteTarget] = useState(null)
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false)
+  const [importOpen, setImportOpen] = useState(false)
   const [selectedIds, setSelectedIds] = useState(new Set())
 
   useEffect(() => { setSelectedIds(new Set()) }, [filters.search, filters.category, filters.lang, filters.tags.join(',')])
@@ -77,6 +81,7 @@ const SentencesPage = () => {
   const createMutation = useCreateSentence()
   const updateMutation = useUpdateSentence()
   const deleteMutation = useDeleteSentence()
+  const bulkDeleteMutation = useBulkDeleteSentences()
   const approveMutation = useApproveSentence()
 
   const handleOpenAdd = useCallback(() => { setEditTarget(null); setFormOpen(true) }, [])
@@ -97,6 +102,12 @@ const SentencesPage = () => {
     setDeleteTarget(null)
   }, [deleteTarget, deleteMutation])
 
+  const handleConfirmBulkDelete = useCallback(async () => {
+    await bulkDeleteMutation.mutateAsync([...selectedIds])
+    setSelectedIds(new Set())
+    setBulkDeleteOpen(false)
+  }, [selectedIds, bulkDeleteMutation])
+
   const showList = !isError && !isLoading && sentences.length > 0
 
   return (
@@ -106,8 +117,11 @@ const SentencesPage = () => {
         <h5 style={{ fontWeight: 700, fontSize: '1.25rem', color: 'var(--text-color)' }}>Sentences</h5>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <Button icon="pi pi-refresh" text rounded onClick={() => refetch()} tooltip="Refresh" tooltipOptions={{ position: 'bottom' }} />
+          {isAdmin && (
+            <Button label="Import CSV" icon="pi pi-file-import" outlined className="btn-icon-mobile" tooltip="Import CSV" tooltipOptions={{ position: 'bottom' }} onClick={() => setImportOpen(true)} />
+          )}
           {isAuthenticated && (
-            <Button label="Add Sentence" icon="pi pi-plus" onClick={handleOpenAdd} />
+            <Button label="Add Sentence" icon="pi pi-plus" className="btn-icon-mobile" tooltip="Add Sentence" tooltipOptions={{ position: 'bottom' }} onClick={handleOpenAdd} />
           )}
         </div>
       </div>
@@ -136,11 +150,25 @@ const SentencesPage = () => {
           </span>
           <div style={{ flex: 1 }} />
           {selectedIds.size > 0 ? (
-            <CSVLink data={csvData} headers={CSV_HEADERS} filename={`easylearn-export-${Date.now()}.csv`} style={{ textDecoration: 'none' }}>
-              <Button label={`Export ${selectedIds.size} ${selectedIds.size === 1 ? 'record' : 'records'}`} icon="pi pi-download" size="small" />
-            </CSVLink>
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <CSVLink data={csvData} headers={CSV_HEADERS} filename={`easylearn-export-${Date.now()}.csv`} style={{ textDecoration: 'none' }}>
+                <Button label={`Export ${selectedIds.size} ${selectedIds.size === 1 ? 'record' : 'records'}`} icon="pi pi-download" size="small" className="btn-icon-mobile" tooltip={`Export ${selectedIds.size} selected`} tooltipOptions={{ position: 'bottom' }} />
+              </CSVLink>
+              {isAdmin && (
+                <Button
+                  label={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'record' : 'records'}`}
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  className="btn-icon-mobile"
+                  tooltip={`Delete ${selectedIds.size} selected`}
+                  tooltipOptions={{ position: 'bottom' }}
+                  onClick={() => setBulkDeleteOpen(true)}
+                />
+              )}
+            </div>
           ) : (
-            <Button label="Export CSV" icon="pi pi-download" size="small" outlined disabled />
+            <Button label="Export CSV" icon="pi pi-download" size="small" outlined disabled className="btn-icon-mobile" />
           )}
         </div>
       )}
@@ -186,6 +214,8 @@ const SentencesPage = () => {
         </div>
       )}
 
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} />
+
       <SentenceForm
         open={formOpen}
         onClose={() => { setFormOpen(false); setEditTarget(null) }}
@@ -202,6 +232,16 @@ const SentencesPage = () => {
         description={`Are you sure you want to delete "${deleteTarget?.sentences?.en}"? This cannot be undone.`}
         confirmLabel="Delete"
         isLoading={deleteMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onClose={() => setBulkDeleteOpen(false)}
+        onConfirm={handleConfirmBulkDelete}
+        title="Delete Selected Records"
+        description={`Are you sure you want to delete ${selectedIds.size} selected ${selectedIds.size === 1 ? 'record' : 'records'}? This cannot be undone.`}
+        confirmLabel={`Delete ${selectedIds.size} ${selectedIds.size === 1 ? 'record' : 'records'}`}
+        isLoading={bulkDeleteMutation.isPending}
       />
     </div>
   )
